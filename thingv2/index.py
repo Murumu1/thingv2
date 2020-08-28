@@ -3,7 +3,7 @@ import inspect
 import json
 import math
 import random
-import typing
+from typing import Optional, List
 import time
 import dataset
 from dataclasses import dataclass
@@ -31,17 +31,17 @@ class Field:
 
 async def send_embed(
     ctx,
-    message: typing.Optional[str] = None,
-    colour: typing.Optional[str] = None,
-    title: typing.Optional[str] = None,
-    footer: typing.Optional[str] = None,
-    image: typing.Optional[str] = None,
-    thumbnail: typing.Optional[str] = None,
-    fields: typing.Optional[typing.List[Field]] = None,
+    message: Optional[str] = None,
+    colour: Optional[str] = None,
+    title: Optional[str] = None,
+    footer: Optional[str] = None,
+    image: Optional[str] = None,
+    thumbnail: Optional[str] = None,
+    fields: Optional[List[Field]] = None,
 ) -> Message:
-    h, s, l = (random.random(), 0.75, 0.5)
-    r, g, b = [int(255 * i) for i in colorsys.hls_to_rgb(h, l, s)]
-    rd_col = "{:02x}{:02x}{:02x}".format(r, g, b)
+    hue, sat, light = (random.random(), 0.75, 0.5)
+    red, green, blue = [int(255 * i) for i in colorsys.hls_to_rgb(hue, light, sat)]
+    rd_col = "{:02x}{:02x}{:02x}".format(red, green, blue)
     embed = Embed(
         description=message,
         color=(int(rd_col, 16) if not colour else int(colour, 16)),
@@ -99,7 +99,6 @@ async def on_message(message):
 
 @bot.event
 async def on_command_error(ctx, error):
-    raise error
     error = getattr(error, "original", error)
 
     if isinstance(error, commands.UserInputError):
@@ -175,7 +174,7 @@ class Miscellaneous(commands.Cog):
              "that command. You already know what to do since you can see this message :)",
         aliases=["info", "information", "commands"]
     )
-    async def help(self, ctx, cmd=None):
+    async def help(self, ctx: Context, cmd: Optional[str] = None):
 
         if cmd:
             command = bot.get_command(cmd)
@@ -242,7 +241,8 @@ class Economy(commands.Cog):
                 Field("Balance", "**${}**".format(row["balance"])),
                 Field("In bank", "**${}**".format(row["bank"])),
             ],
-            thumbnail="https://emojipedia-us.s3.dualstack.us-west-1.amazonaws.com/thumbs/120/facebook/65/bank_1f3e6.png",
+            thumbnail="https://emojipedia-us.s3.dualstack.us-west-1.amazonaws.com/thumbs/120/facebook/65/"
+                      "bank_1f3e6.png",
         )
 
     @commands.command(aliases=["add", "add_money"], hidden=True)
@@ -291,7 +291,7 @@ class Economy(commands.Cog):
             await send_embed(ctx, "{}\nBalance: **${}**".format(msg, new_bal))
 
     @commands.command()
-    async def claim(self, ctx):
+    async def claim(self, ctx: Context):
         row = users.find_one(id=ctx.author.id)
 
         if int(time.time()) < row["claim_cd"] + 86400:
@@ -336,7 +336,7 @@ class Economy(commands.Cog):
             )
 
     @commands.command()
-    async def deposit(self, ctx, amount: int):
+    async def deposit(self, ctx: Context, amount: int):
         row = users.find_one(id=ctx.author.id)
         if amount > row["balance"]:
             await send_embed(
@@ -372,7 +372,7 @@ class Games(commands.Cog):
 
     @commands.command(
         brief="Play a game of Tic Tac Toe!",
-        help="Starts a Tic Tac Toe game. Use `{0}accept <gameid>` to accept a game, "
+        help="Starts a Tic Tac Toe game. Use `{0}accept <game id>` to accept a game, "
         "then to put a cross/nought use `{0}place <position>` and use `{0}end` to end "
         "the game if needed.".format(bot.command_prefix),
         aliases=["tictactoe"],
@@ -572,7 +572,7 @@ class Moderation(commands.Cog):
     )
     @commands.has_permissions(ban_members=True)
     async def ban(
-        self, ctx: Context, member: Member, *, reason: typing.Optional[str] = None
+        self, ctx: Context, member: Member, *, reason: Optional[str] = None
     ):
         await ctx.guild.ban(member, reason=reason)
         await send_embed(
@@ -583,11 +583,11 @@ class Moderation(commands.Cog):
 
     @commands.command()
     @commands.has_permissions(ban_members=True)
-    async def unban(self, ctx: Context, member, *, reason: typing.Optional[str] = None):
+    async def unban(self, ctx: Context, member, *, reason: Optional[str] = None):
         user = None
         try:
-            id = int(member)
-            user = await bot.fetch_user(id)
+            user_id = int(member)
+            user = await bot.fetch_user(user_id)
         except ValueError:
             name, discrim = member.split("#")
             for ban in await ctx.guild.bans():
@@ -610,7 +610,7 @@ class Moderation(commands.Cog):
     @commands.command()
     @commands.has_permissions(kick_members=True)
     async def kick(
-        self, ctx: Context, member: Member, *, reason: typing.Optional[str] = None
+        self, ctx: Context, member: Member, *, reason: Optional[str] = None
     ):
         await ctx.guild.kick(member, reason=reason)
         await send_embed(ctx, "{} has been kicked!".format(member.name))
