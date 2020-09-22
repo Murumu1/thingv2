@@ -39,7 +39,7 @@ async def send_embed(
     thumbnail: Optional[str] = None,
     fields: Optional[List[Field]] = None,
 ) -> Message:
-    hue, sat, light = (random.random(), 0.75, 0.5)
+    hue, sat, light = (random.random(), 0.6, 0.5)
     red, green, blue = [int(255 * i) for i in colorsys.hls_to_rgb(hue, light, sat)]
     rd_col = "{:02x}{:02x}{:02x}".format(red, green, blue)
     embed = Embed(
@@ -171,8 +171,8 @@ class Miscellaneous(commands.Cog):
     @commands.command(
         brief="Shows all the commands!",
         help="Shows all the commands available. Using a command name as an argument shows all the information about "
-             "that command. You already know what to do since you can see this message :)",
-        aliases=["info", "information", "commands"]
+        "that command. You already know what to do since you can see this message :)",
+        aliases=["info", "information", "commands", "cmds"],
     )
     async def help(self, ctx: Context, cmd: Optional[str] = None):
 
@@ -220,7 +220,13 @@ class Miscellaneous(commands.Cog):
                     )
                 cmd_info = "\n".join(cmd_info)
                 fields.append(Field(name, cmd_info, False))
-            await send_embed(ctx, fields=fields, title="Here's a list of commands!")
+            await send_embed(
+                ctx,
+                "Use `{}help [command]` for more information on a command. `<>` arguments are compulsory and `[]` are "
+                "optional.".format(bot.command_prefix),
+                fields=fields,
+                title="Here's a list of commands!",
+            )
 
 
 class Economy(commands.Cog):
@@ -238,11 +244,12 @@ class Economy(commands.Cog):
             ctx,
             title="{}'s balance".format(ctx.author.name),
             fields=[
-                Field("Balance", "**${}**".format(row["balance"])),
-                Field("In bank", "**${}**".format(row["bank"])),
+                Field("Balance", "**£{}**".format(row["balance"])),
+                Field("In bank", "**£{}**".format(row["bank"])),
             ],
-            thumbnail="https://emojipedia-us.s3.dualstack.us-west-1.amazonaws.com/thumbs/120/facebook/65/"
-                      "bank_1f3e6.png",
+            thumbnail="https://emojipedia-us.s3.dualstack.us-west-1.amazonaws.com/thumbs/120/facebook/65/money"
+            "-bag_1f4b0.png",
+            footer="You have £{} in total.".format(row["balance"] + row["bank"]),
         )
 
     @commands.command(aliases=["add", "add_money"], hidden=True)
@@ -253,7 +260,7 @@ class Economy(commands.Cog):
         users.update(dict(id=ctx.author.id, balance=new_bal), ["id"])
         await send_embed(
             ctx,
-            "{}, I have added **${}** to your account\nNew balance: **${}**".format(
+            "{}, I have added **£{}** to your account\nNew balance: **£{}**".format(
                 ctx.author.name, amount, new_bal
             ),
         )
@@ -269,28 +276,32 @@ class Economy(commands.Cog):
         if int(amount) > row["balance"]:
             await send_embed(
                 ctx,
-                "You cannot gamble more than you have.\nBalance: ${}".format(
+                "You cannot gamble more than you have.\nBalance: £{}".format(
                     row["balance"]
                 ),
             )
         elif int(amount) < 5:
-            await send_embed(ctx, "Minimum bet is $5")
+            await send_embed(ctx, "Minimum bet is <:messMoney:440105828758978590>5")
         else:
             num = random.randint(1, 100)
             new_bal = row["balance"]
             if num <= 50:
                 new_bal -= int(amount)
-                msg = "Unfortunately you rolled **{}**. You lost **${}**".format(
+                msg = "Unfortunately you rolled **{}**. You lost **£{}**".format(
                     num, amount
                 )
             else:
                 new_bal += int(amount)
-                msg = "Congrats! you rolled **{}**. You won **${}**".format(num, amount)
+                msg = "Congrats! you rolled **{}**. You won **£{}**".format(num, amount)
 
             users.update(dict(id=ctx.author.id, balance=new_bal), ["id"])
-            await send_embed(ctx, "{}\nBalance: **${}**".format(msg, new_bal))
+            await send_embed(ctx, "{}\nBalance: **£{}**".format(msg, new_bal))
 
-    @commands.command()
+    @commands.command(
+        brief="Claim some money each day!",
+        help="Add a random amount of money between <:messMoney:440105828758978590>100 and <:messMoney:440105828758978590>500 to your balance each day",
+        aliases=["daily"],
+    )
     async def claim(self, ctx: Context):
         row = users.find_one(id=ctx.author.id)
 
@@ -311,16 +322,16 @@ class Economy(commands.Cog):
                 "-clock_23f0.png ",
             )
         else:
-            money = random.randint(1, 500)
+            money = random.randint(100, 500)
             new_bal = row["balance"] + money
             responses = [
                 "You beat up a poor homeless man and stole his lunch money, no regrets were made as you cashed out "
-                "**${}**. Why'd he have so much money the damn hoarder.",
+                "**£{}**. Why'd he have so much money the damn hoarder.",
                 "You shot up an orphanage and sniped their donation box, turns out they were stashing it away. "
-                "You stole **${}** and no one complained.",
+                "You stole **£{}** and no one complained.",
                 "You saw a poster on the wall advertising a cheese tasting session, when you arrived, you were "
-                "kidnapped by the fucking Italian Mafia and they sauced you **${}** in exchange for your loyalty.",
-                "You literally sucked dick for money. He paid you **${}**. Money is money right...",
+                "kidnapped by the fucking Italian Mafia and they sauced you **£{}** in exchange for your loyalty.",
+                "You literally sucked dick for money. He paid you **£{}**. Money is money right...",
             ]
             users.update(
                 dict(id=ctx.author.id, balance=new_bal, claim_cd=int(time.time())),
@@ -331,17 +342,21 @@ class Economy(commands.Cog):
                 random.choice(responses).format(money)
                 + " Come back tomorrow for more money!",
                 title="Daily money claimed!",
-                thumbnail="https://emojipedia-us.s3.dualstack.us-west-1.amazonaws.com/thumbs/120/facebook/65/money"
-                "-bag_1f4b0.png",
+                thumbnail="https://emojipedia-us.s3.dualstack.us-west-1.amazonaws.com/thumbs/120/facebook/65/banknote"
+                "-with-dollar-sign_1f4b5.png",
             )
 
-    @commands.command()
+    @commands.command(
+        brief="Deposit money into your bank!",
+        help="Stores your money into your bank",
+        aliases=["dep"],
+    )
     async def deposit(self, ctx: Context, amount: int):
         row = users.find_one(id=ctx.author.id)
         if amount > row["balance"]:
             await send_embed(
                 ctx,
-                "You cannot deposit more than you own.\nBalance: **${}**".format(
+                "You cannot deposit more than you own.\nBalance: **£{}**".format(
                     row["balance"]
                 ),
                 title="Deposit failed.",
@@ -357,13 +372,50 @@ class Economy(commands.Cog):
             )
             await send_embed(
                 ctx,
-                "Successfully deposited **${}** to your bank account!\nBalance: **${}**\nMoney in bank: **${}**".format(
+                "Successfully deposited **£{}** to your bank account!\nBalance: **£{}**\nMoney in bank: **£{}**".format(
                     amount, new_bal, new_banked
                 ),
                 title="Money deposited!",
                 thumbnail="https://emojipedia-us.s3.dualstack.us-west-1.amazonaws.com/thumbs/120/facebook/65"
                 "/downwards-black-arrow_2b07.png",
             )
+
+    @commands.command(
+        brief="Withdraw money from your bank!",
+        help="Takes money out of your bank and into your balance",
+        aliases=["wd"],
+    )
+    async def withdraw(self, ctx: Context, amount: int):
+        row = users.find_one(id=ctx.author.id)
+        if amount > row["bank"]:
+            await send_embed(
+                ctx,
+                "You cannot withdraw more than you have in the bank.\nMoney in bank: **£{}**".format(
+                    row["bank"]
+                ),
+                title="Withdraw failed.",
+                colour="ff0000",
+            )
+        else:
+            new_bal = row["balance"] + amount
+            new_banked = row["bank"] - amount
+            users.update(
+                dict(id=ctx.author.id, bank=new_banked, balance=new_bal), ["id"],
+            )
+            await send_embed(
+                ctx,
+                "Successfully withdrew **£{}** from your bank account!"
+                "\nBalance: **£{}**"
+                "\nMoney in bank: **£{}**".format(amount, new_bal, new_banked),
+                title="Money withdrawn!",
+                thumbnail="https://emojipedia-us.s3.dualstack.us-west-1.amazonaws.com/thumbs/120/facebook/65/upwards"
+                "-black-arrow_2b06.png",
+            )
+
+    @commands.command()
+    @commands.is_owner()
+    async def rc(self, ctx):
+        db.query("UPDATE users SET claim_cd = 0")
 
 
 class Games(commands.Cog):
@@ -474,9 +526,9 @@ class Games(commands.Cog):
         await msg.edit(
             embed=Embed(
                 description="```"
-                "{0} | {1} | {2}\t\t\t Type !place <position> to play your turn\n"
-                "---------\t\t\t Get three in a row/diagonal to win.\n"
-                "{3} | {4} | {5}\t\t\t It is currently {9}' turn.\n"
+                "{0} | {1} | {2}\t\t Type !place <position> to play your turn\n"
+                "---------\t\t Get three in a row/diagonal to win.\n"
+                "{3} | {4} | {5}\t\t It is currently {9}' turn.\n"
                 "---------\n"
                 "{6} | {7} | {8}\n"
                 "```".format(
@@ -490,7 +542,8 @@ class Games(commands.Cog):
                     p["8"],
                     p["9"],
                     row["turn"],
-                )
+                ),
+                colour=msg.embeds[0].colour,
             )
         )
 
@@ -569,11 +622,10 @@ class Moderation(commands.Cog):
     @commands.command(
         brief="Ban a user from the server",
         help="Ban a user from the server, requires ban member permissions, use an @ mention for the member argument.",
+        aliases=["hammer"],
     )
     @commands.has_permissions(ban_members=True)
-    async def ban(
-        self, ctx: Context, member: Member, *, reason: Optional[str] = None
-    ):
+    async def ban(self, ctx: Context, member: Member, *, reason: Optional[str] = None):
         await ctx.guild.ban(member, reason=reason)
         await send_embed(
             ctx,
@@ -581,7 +633,14 @@ class Moderation(commands.Cog):
             title="The ban hammer has spoken!",
         )
 
-    @commands.command()
+    @commands.command(
+        brief="Unban a user from the server",
+        help="Unbans a user from the server, requires ban member permissions, use an id or their full name for the "
+        "member argument. Use `{}ban_list` to find a list of members who are banned.".format(
+            bot.command_prefix
+        ),
+        aliases=["ub", "free"],
+    )
     @commands.has_permissions(ban_members=True)
     async def unban(self, ctx: Context, member, *, reason: Optional[str] = None):
         user = None
@@ -607,25 +666,41 @@ class Moderation(commands.Cog):
             ctx, "{} has been unbanned!".format(user.name),
         )
 
-    @commands.command()
+    @commands.command(
+        brief="Kick a user from the server",
+        help="Kick a user from the server, requires ban member permissions, use an @ mention for the member argument.",
+        aliases=["boot"],
+    )
     @commands.has_permissions(kick_members=True)
-    async def kick(
-        self, ctx: Context, member: Member, *, reason: Optional[str] = None
-    ):
+    async def kick(self, ctx: Context, member: Member, *, reason: Optional[str] = None):
         await ctx.guild.kick(member, reason=reason)
         await send_embed(ctx, "{} has been kicked!".format(member.name))
 
-    @commands.command()
+    @commands.command(
+        brief="Shows a list of banned members",
+        help="Shows all banned members in the server, with their username and their id. Useful for `{}unban`".format(
+            bot.command_prefix
+        ),
+        aliases=["bl", "bans"],
+    )
     @commands.has_permissions(ban_members=True)
     async def ban_list(self, ctx: Context):
         bans = await ctx.guild.bans()
-        msg = "Username:{} ID:".format(7 * "\t")
-        for ban in bans:
-            full_name = "{}#{}".format(ban.user.name, ban.user.discriminator)
-            tab_space = 9 - math.floor(len(full_name) / 4)
-            msg += "\n{}{}{}".format(full_name, tab_space * "\t", ban.user.id)
+        if not bans:
+            await send_embed(
+                ctx,
+                "There are no bans on this server!",
+                title="No bans found.",
+                colour="ff0000",
+            )
+        else:
+            msg = "Username:{} ID:".format(7 * "\t")
+            for ban in bans:
+                full_name = "{}#{}".format(ban.user.name, ban.user.discriminator)
+                tab_space = 9 - math.floor(len(full_name) / 4)
+                msg += "\n{}{}{}".format(full_name, tab_space * "\t", ban.user.id)
 
-        await ctx.send("```{}```".format(msg))
+            await ctx.send("```{}```".format(msg))
 
 
 for c in [Miscellaneous, Economy, Games, Moderation]:
